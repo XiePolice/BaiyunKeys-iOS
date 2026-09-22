@@ -2,7 +2,7 @@
 
 蓝牙门禁离线开锁，SwiftUI，无第三方依赖。
 
-配套网页版：<https://baiyunkeys-web.pages.dev/>，一套格式互通，导入导出直接搬。
+配套网页版：<https://baiyunkeys-web.pages.dev/>，安卓 / iOS / 电脑浏览器都能用，一套格式互通，导入导出直接搬。
 
 ## 安装
 
