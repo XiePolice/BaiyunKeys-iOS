@@ -1,0 +1,27 @@
+# Xcode
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# 构建产物
+Payload/
+*.ipa
+*.dSYM.zip
+*.xcarchive
+
+# 签名材料 —— 绝对不要提交
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+
+# macOS
+.DS_Store
+
+# SwiftPM
+.swiftpm/
+.build/
