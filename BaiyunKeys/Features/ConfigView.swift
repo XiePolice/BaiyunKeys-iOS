@@ -391,6 +391,19 @@ struct ConfigView: View {
     private var aboutCard: some View {
         Card {
             CardHeader(title: "关于", subtitle: "运行环境与说明", symbol: "info.circle", tint: Theme.textSecondary)
+                .overlay(alignment: .trailing) {
+                    Link(destination: projectRepoURL) {
+                        Image("github")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(width: 40, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
 
             VStack(spacing: 8) {
                 aboutRow("App 版本", Self.appVersion)
