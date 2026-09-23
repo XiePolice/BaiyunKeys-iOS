@@ -6,6 +6,8 @@
 
 ## 安装
 
+**系统要求：iOS 17 及以上。** 低于此版本会启动闪退（工程用了大量 iOS 17 才有的 API，系统找不到符号）。iPhone 8 及以后机型都能升到 iOS 17 / 18。
+
 下载最新版：[Releases · 最新](https://github.com/YiwanGo/BaiyunKeys-iOS/releases/latest)。
 
 产物是**免签名** IPA，需要自签后安装。常见方式：
