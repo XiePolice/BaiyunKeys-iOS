@@ -47,6 +47,7 @@ App 注册了 `baiyunkeys://` scheme，两个格式：
 
 ## 已知限制
 
+- 排版基于 iPhone 16 Pro Max（6.9″）开发适配，其他机型如果遇到布局问题欢迎[提 Issue](https://github.com/YiwanGo/BaiyunKeys-iOS/issues)。
 - 前台开锁最稳；后台入口受 iOS 后台运行时长限制，链路慢时可能中途失败。
 - 操作按钮 / 轻点背面等硬件入口只有 iPhone 15 Pro 及以后机型有；快捷指令和 Siri 全机型可用。
 - CoreBluetooth 不向 App 暴露外设 MAC，扫描只能靠蓝牙名。
