@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct HomeView: View {
-    @Environment(AppStore.self) private var store
-    @Environment(UnlockService.self) private var unlocker
+    @EnvironmentObject private var store: AppStore
+@EnvironmentObject private var unlocker: UnlockService
     @Environment(\.openURL) private var openURL
 
     @Binding var selectedTab: RootView.Tab
