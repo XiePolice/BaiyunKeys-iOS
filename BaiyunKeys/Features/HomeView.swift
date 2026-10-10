@@ -51,7 +51,7 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 // 左上角：检查更新 + 蓝牙状态 + 扫码导入（长辈模式下都藏起来）
-                ToolbarItemGroup(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
                     if !store.elderMode {
                         Button {
                             Task { await checkForUpdate() }
