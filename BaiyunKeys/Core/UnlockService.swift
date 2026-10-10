@@ -1,11 +1,9 @@
 import CoreBluetooth
 import Foundation
-import Observation
 import UIKit
 
 /// 蓝牙开锁流程编排：扫描 → 连接 → 取随机数 → 握手 → 等待回执。
-@Observable
-final class UnlockService: NSObject {
+final class UnlockService: NSObject, ObservableObject {
 
     // MARK: - 对外状态
 
@@ -28,13 +26,13 @@ final class UnlockService: NSObject {
         let text: String
     }
 
-    private(set) var phase: Phase = .idle
-    private(set) var statusText: String = "准备就绪"
-    private(set) var logs: [LogLine] = []
-    private(set) var attempt: Int = 0
-    private(set) var maxAttempts: Int = 1
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var statusText: String = "准备就绪"
+    @Published private(set) var logs: [LogLine] = []
+    @Published private(set) var attempt: Int = 0
+    @Published private(set) var maxAttempts: Int = 1
     /// 蓝牙不可用时给界面的提示，nil 表示正常。
-    private(set) var bluetoothIssue: String?
+    @Published private(set) var bluetoothIssue: String?
 
     /// 汇总的蓝牙状态文案：优先展示开锁流程报出的 issue，其次读系统授权状态。
     /// `CBManager.authorization` 是静态查询，不会创建 CBCentralManager，也就不会误弹权限框。
@@ -51,8 +49,6 @@ final class UnlockService: NSObject {
 
     // MARK: - 常量
 
-    // 扫描不按服务 UUID 过滤：不同门锁的 UUID 不一致，改按「同一服务里
-    // 同时有 read + write 特征」认服务。
     private let connectTimeout: TimeInterval = 8
     private let seedTimeout: TimeInterval = 5
     private let ackTimeout: TimeInterval = 20
@@ -60,48 +56,35 @@ final class UnlockService: NSObject {
 
     // MARK: - 内部状态
 
-    // 以下均为流程内部状态，不需要参与 SwiftUI 的观察。
-
     private enum Stage { case idle, waitingSeed, waitingAck }
 
-    @ObservationIgnored private var central: CBCentralManager?
-    @ObservationIgnored private weak var store: AppStore?
-    @ObservationIgnored private var target: DoorConfig?
-    @ObservationIgnored private var peripheral: CBPeripheral?
-    @ObservationIgnored private var readCharacteristic: CBCharacteristic?
-    @ObservationIgnored private var writeCharacteristic: CBCharacteristic?
-    @ObservationIgnored private var pendingNotifySubscriptions = 0
-    @ObservationIgnored private var stage: Stage = .idle
-    @ObservationIgnored private var startPending = false
-    @ObservationIgnored private var expectedDisconnect = false
-    @ObservationIgnored private var scanTimer: DispatchWorkItem?
-    @ObservationIgnored private var stepTimer: DispatchWorkItem?
+    private var central: CBCentralManager?
+    private weak var store: AppStore?
+    private var target: DoorConfig?
+    private var peripheral: CBPeripheral?
+    private var readCharacteristic: CBCharacteristic?
+    private var writeCharacteristic: CBCharacteristic?
+    private var pendingNotifySubscriptions = 0
+    private var stage: Stage = .idle
+    private var startPending = false
+    private var expectedDisconnect = false
+    private var scanTimer: DispatchWorkItem?
+    private var stepTimer: DispatchWorkItem?
 
-    /// 特征发现阶段：还有多少个服务未回调、是否已选中可用服务。
-    @ObservationIgnored private var pendingServiceDiscovery = 0
-    @ObservationIgnored private var didChooseService = false
+    private var pendingServiceDiscovery = 0
+    private var didChooseService = false
 
-    /// 后台无头开锁用：完成时（无论成功失败）回一句 (Bool, String)，前台使用时留 nil 即可。
-    @ObservationIgnored private var completion: ((Bool, String) -> Void)?
-    /// 扫描时的服务过滤。前台走 `nil` 扫全部再按特征属性挑服务；
-    /// 后台走已知 UUID（iOS 后台扫描强制要求指定 UUID）。
-    @ObservationIgnored private var scanFilter: [CBUUID]?
+    private var completion: ((Bool, String) -> Void)?
+    private var scanFilter: [CBUUID]?
+    private var candidatePool: [DoorConfig]?
+    private var silentOnly = false
 
-    /// 快速模式候选池：不指定具体门锁，扫描到匹配池里任一条就把它当目标。
-    /// 值为 nil 表示单门锁模式（走 `target`）。
-    @ObservationIgnored private var candidatePool: [DoorConfig]?
+    private var handshakeOK = false
+    private var commBuffer = ""
+    private var timeBuffer = ""
+    private var sessionKey = ""
 
-    /// 静默模式：只走缓存设备直连；没缓存 / 蓝牙未开 / 连不上都静悄悄回到 idle，
-    /// 不写日志错误、不震动、不进开锁记录。「切回也开锁」用这条路径。
-    @ObservationIgnored private var silentOnly = false
-
-    /// 协议协商过程中的分片缓存
-    @ObservationIgnored private var handshakeOK = false
-    @ObservationIgnored private var commBuffer = ""
-    @ObservationIgnored private var timeBuffer = ""
-    @ObservationIgnored private var sessionKey = ""
-
-    @ObservationIgnored private let formatter: DateFormatter = {
+    private let formatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss.SSS"
         return f
@@ -114,7 +97,6 @@ final class UnlockService: NSObject {
                 scanFilter: [CBUUID]? = nil,
                 completion: ((Bool, String) -> Void)? = nil) {
         guard !phase.isBusy else {
-            // 后台调用也要回一次 completion，避免挂起的 continuation 永不 resume。
             completion?(false, "开锁流程已在进行中")
             return
         }
@@ -129,7 +111,6 @@ final class UnlockService: NSObject {
         logs.removeAll()
 
         guard config.isUsable else {
-            // 前置校验的失败不记入开锁记录
             fail("门禁参数不完整，请先在「配置」页填写 MAC、Key 与蓝牙名称", record: false)
             return
         }
@@ -138,8 +119,6 @@ final class UnlockService: NSObject {
         beginAttempt()
     }
 
-    /// 快速模式入口：扫描附近的蓝牙设备，遇到匹配 `store.doors` 里任一门禁的
-    /// 广播名或 MAC 就当目标去开。没有可用门禁则直接失败。
     func unlockAny(store: AppStore) {
         guard !phase.isBusy else { return }
         let pool = store.doors.filter(\.isUsable)
@@ -162,8 +141,6 @@ final class UnlockService: NSObject {
         beginAttempt()
     }
 
-    /// 静默开锁：只用缓存的设备直连，没缓存就悄悄跳过。「切回也开锁」用这条路径。
-    /// 不会弹设备选择器、不会启动扫描、失败不进开锁记录也不震动。
     func unlockIfCached(_ config: DoorConfig, store: AppStore) {
         guard !phase.isBusy, config.isUsable else { return }
         guard config.cachedPeripheralID != nil else { return }
@@ -196,7 +173,6 @@ final class UnlockService: NSObject {
         statusText = "准备就绪"
     }
 
-    /// 清空日志缓冲；下一次开锁前调用可以拿到干净的过程记录。
     func clearLogs() {
         logs.removeAll()
     }
@@ -227,8 +203,6 @@ final class UnlockService: NSObject {
         guard let central else { return }
         bluetoothIssue = nil
 
-        // 单门锁模式：优先直连上次成功的外设，省掉扫描时间。
-        // 快速模式不走缓存直连，要按现场信号强度选取候选池里最近的门锁。
         if candidatePool == nil, let target,
            let cached = target.cachedPeripheralID, let uuid = UUID(uuidString: cached),
            let known = central.retrievePeripherals(withIdentifiers: [uuid]).first {
@@ -237,7 +211,6 @@ final class UnlockService: NSObject {
             return
         }
 
-        // 静默模式没缓存就悄悄退回 idle，不进扫描
         if silentOnly {
             silentAbort("静默模式无缓存设备，跳过")
             return
@@ -305,7 +278,6 @@ final class UnlockService: NSObject {
         log("收到 \(hex.count / 2)B header=\(header) cmd=\(command) type=\(type)", .debug)
         guard header == "A5" else { return }
 
-        // 握手回执
         if command == "04" {
             cancelTimer(&stepTimer)
             guard hex.count > 24 else {
@@ -321,7 +293,6 @@ final class UnlockService: NSObject {
             return
         }
 
-        // 通讯密钥协商失败
         if command == "08" {
             let word = String(hex.suffix(6).prefix(4)).uppercased()
             let hint = word == "E36F" ? "（门锁拒绝协商，通常是 Key 或授权信息不匹配）" : ""
@@ -329,7 +300,6 @@ final class UnlockService: NSObject {
             return
         }
 
-        // 开锁结果回执
         if type == "87", tail == "5A" {
             let result = BLEProtocol.openResult(frameHex: hex, productKey: target.key)
             finish(success: result.isSuccess, message: result.message)
@@ -383,11 +353,9 @@ final class UnlockService: NSObject {
     // MARK: - 结束处理
 
     private func finish(success: Bool, message: String) {
-        // 缓存必须在 teardown 之前取，teardown 会清空 peripheral
         if success, let target, let id = peripheral?.identifier.uuidString {
             store?.cachePeripheral(id, for: target.id)
         }
-        // 静默模式下的失败不写历史、不震动、不设 .failure；成功仍然按正常路径走。
         let visible = !silentOnly || success
         if visible {
             recordHistory(ok: success, message: message)
@@ -403,14 +371,12 @@ final class UnlockService: NSObject {
             statusText = "准备就绪"
             log(message, .debug)
         }
-        // 后台调用方的一次性回调，先取出再清空避免重入
         let cb = completion
         completion = nil
         cb?(success, message)
         silentOnly = false
     }
 
-    /// 扫描 / 连接类失败可自动重试，协议类失败直接结束。
     private func retryOrFail(_ message: String) {
         if attempt < maxAttempts {
             log("\(message)，自动重试（\(attempt)/\(maxAttempts)）", .warn)
@@ -425,7 +391,6 @@ final class UnlockService: NSObject {
         finish(success: false, message: message)
     }
 
-    /// - Parameter record: 是否要把这次失败写进开锁记录。前置校验（如参数不完整）传 `false`。
     private func fail(_ message: String, record: Bool = true) {
         if record && !silentOnly { recordHistory(ok: false, message: message) }
         teardown()
@@ -445,8 +410,6 @@ final class UnlockService: NSObject {
         silentOnly = false
     }
 
-    /// 静默模式下的软退出：没缓存 / 蓝牙未开等场景走这里，不产生用户可见输出，
-    /// 也不写入开锁记录。跟 `fail` 的区别是这里只留一条 `.debug` 日志。
     private func silentAbort(_ reason: String) {
         log(reason, .debug)
         teardown()
@@ -455,7 +418,6 @@ final class UnlockService: NSObject {
         silentOnly = false
     }
 
-    /// 写一条开锁记录到 store。target / store 缺任何一个都放弃——记录本来就只是留档。
     private func recordHistory(ok: Bool, message: String) {
         guard let target, let store else { return }
         store.addUnlock(doorId: target.id, doorName: target.displayName, ok: ok, message: message)
@@ -466,7 +428,6 @@ final class UnlockService: NSObject {
         cancelTimer(&stepTimer)
         central?.stopScan()
         if let peripheral {
-            // 主动断开会触发 didDisconnectPeripheral，标记一下避免被当成异常掉线再次重试
             expectedDisconnect = true
             central?.cancelPeripheralConnection(peripheral)
         }
@@ -561,7 +522,6 @@ extension UnlockService: CBCentralManagerDelegate {
         let localName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? ""
         let name = (peripheral.name ?? localName).uppercased()
 
-        // 快速模式：拿池里的每一条挨个试；命中就把它当目标继续走。
         if let pool = candidatePool {
             if let hit = pool.first(where: { matches(name: name, advertisement: advertisementData, door: $0) }) {
                 target = hit
@@ -573,7 +533,6 @@ extension UnlockService: CBCentralManagerDelegate {
             return
         }
 
-        // 单门锁模式
         guard let target else { return }
         guard matches(name: name, advertisement: advertisementData, door: target) else {
             log("发现设备 \(name.isEmpty ? "未知" : name) RSSI=\(RSSI)", .debug)
@@ -583,8 +542,6 @@ extension UnlockService: CBCentralManagerDelegate {
         connect(peripheral)
     }
 
-    /// 判断某个广播是否属于给定门锁：优先看蓝牙名等值，其次看厂商数据里
-    /// 是否含 MAC / 反序 MAC / 名字的 ASCII 编码。
     private func matches(name: String, advertisement: [String: Any], door: DoorConfig) -> Bool {
         let wanted = door.bluetoothName.uppercased()
         if !wanted.isEmpty, name == wanted { return true }
@@ -608,7 +565,6 @@ extension UnlockService: CBCentralManagerDelegate {
         log("蓝牙连接成功")
         phase = .negotiating
         statusText = "正在初始化蓝牙服务…"
-        // 枚举全部服务后按特征属性挑，兼容服务 UUID 未知的门锁。
         peripheral.discoverServices(nil)
         schedule(&stepTimer, after: connectTimeout) { [weak self] in
             self?.retryOrFail("蓝牙服务发现超时")
@@ -644,7 +600,6 @@ extension UnlockService: CBPeripheralDelegate {
         pendingServiceDiscovery = services.count
         didChooseService = false
         log("发现 \(services.count) 个服务，逐个枚举特征", .debug)
-        // 每个服务都问一遍特征，等 didDiscoverCharacteristicsFor 里按属性挑
         for service in services {
             peripheral.discoverCharacteristics(nil, for: service)
         }
@@ -655,7 +610,6 @@ extension UnlockService: CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         pendingServiceDiscovery = max(0, pendingServiceDiscovery - 1)
-        // 已选中一个可用服务后，忽略后续服务的回调，避免覆盖特征引用。
         if didChooseService { return }
 
         let characteristics = service.characteristics ?? []
@@ -667,7 +621,6 @@ extension UnlockService: CBPeripheralDelegate {
             $0.properties.contains(.notify) || $0.properties.contains(.indicate)
         }
 
-        // 只认「同一个服务里同时有可读 + 可写特征」的那个；不合格就等下一个服务的回调
         guard let read, let write else {
             log("服务 \(service.uuid.uuidString) 缺可读或可写特征，跳过", .debug)
             if pendingServiceDiscovery == 0 {
@@ -688,7 +641,6 @@ extension UnlockService: CBPeripheralDelegate {
         }
         pendingNotifySubscriptions = notifiable.count
         notifiable.forEach { peripheral.setNotifyValue(true, for: $0) }
-        // 若设备未回订阅确认，1.5 秒后继续读取随机数作为兜底。
         schedule(&stepTimer, after: 1.5) { [weak self] in
             guard let self, self.stage == .idle else { return }
             self.log("订阅回调超时，继续读取随机数", .warn)
@@ -738,8 +690,6 @@ extension UnlockService: CBPeripheralDelegate {
 // MARK: - 触感反馈
 
 enum Haptics {
-    /// 总开关：直接读 UserDefaults，避开 AppStore 依赖，也让 Components 里的
-    /// `.sensoryFeedback` 闭包能同步查到。默认 true（key 不存在时视为开启）。
     static var enabled: Bool {
         (UserDefaults.standard.object(forKey: "haptics") as? Bool) ?? true
     }
