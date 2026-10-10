@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - 卡片
 
@@ -177,7 +178,11 @@ struct StepperRow: View {
             Stepper("", value: $value, in: range)
                 .labelsHidden()
         }
-        .sensoryFeedback(trigger: value) { _, _ in Haptics.enabled ? .increase : nil }
+        .onChange(of: value) { _ in
+            if Haptics.enabled {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
+        }
     }
 }
 
@@ -217,7 +222,11 @@ struct PrefMenuRow<MenuContent: View>: View {
                 .background(Theme.surfaceAlt, in: Capsule())
             }
         }
-        .sensoryFeedback(trigger: current) { _, _ in Haptics.enabled ? .selection : nil }
+        .onChange(of: current) { _ in
+            if Haptics.enabled {
+                UISelectionFeedbackGenerator().selectionChanged()
+            }
+        }
     }
 }
 
