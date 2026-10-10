@@ -6,8 +6,8 @@ struct RootView: View {
         case home, config
     }
 
-    @Environment(AppStore.self) private var store
-    @Environment(UnlockService.self) private var unlocker
+    @EnvironmentObject private var store: AppStore
+@EnvironmentObject private var unlocker: UnlockService
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var tab: Tab = .home
