@@ -1,7 +1,7 @@
 import SwiftUI
 
 private let webVersionURL = URL(string: "https://baiyunkeys-web.pages.dev/")!
-private let projectRepoURL = URL(string: "https://github.com/YiwanGo/BaiyunKeys-iOS")!
+private let projectRepoURL = URL(string: "https://github.com/XiePolice/BaiyunKeys-iOS")!
 
 struct ConfigView: View {
     @EnvironmentObject private var store: AppStore
