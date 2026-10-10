@@ -29,7 +29,7 @@
 
 下载最新版：[Releases · 最新](https://github.com/XiePolice/BaiyunKeys-iOS16/releases)。
 
-产物是**免签名** IPA，需要自签后安装。常见方式：
+产物是**未签名** IPA，需要自签后安装。常见方式：
 
 - **TrollStore**：直接装，长期有效。
 - **AltStore / SideStore**：Apple ID 签名，7 天有效期，到期用电脑或 AltStore 重签。
