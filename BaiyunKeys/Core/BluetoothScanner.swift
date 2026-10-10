@@ -1,12 +1,10 @@
 import CoreBluetooth
 import Foundation
-import Observation
 
 /// 一个只做「看」的蓝牙扫描器：不连接、不写、不干开锁流程，只把周围广播的
 /// 设备名和 RSSI 收集起来供 UI 展示。跟 `UnlockService` 各自持有独立
 /// `CBCentralManager`，互不阻塞。
-@Observable
-final class BluetoothScanner: NSObject {
+final class BluetoothScanner: NSObject, ObservableObject {
 
     struct Discovery: Identifiable, Equatable {
         let id: UUID
@@ -15,13 +13,13 @@ final class BluetoothScanner: NSObject {
         var lastSeen: Date
     }
 
-    private(set) var discoveries: [Discovery] = []
-    private(set) var isScanning = false
+    @Published private(set) var discoveries: [Discovery] = []
+    @Published private(set) var isScanning = false
     /// 蓝牙不可用时的提示，nil 表示正常。
-    private(set) var issue: String?
+    @Published private(set) var issue: String?
 
-    @ObservationIgnored private var central: CBCentralManager?
-    @ObservationIgnored private var wantsScanning = false
+    private var central: CBCentralManager?
+    private var wantsScanning = false
 
     func start() {
         wantsScanning = true
