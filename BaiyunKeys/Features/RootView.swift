@@ -109,7 +109,7 @@ struct RootView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.snappy, value: rootToast)
+        .animation(.easeInOut(duration: 0.25), value: rootToast)
         .onAppear(perform: handleLaunch)
         .onChange(of: store.elderMode) { on in
             // 开启长辈模式后配置 tab 已被移除；若此刻仍停在 config
@@ -136,7 +136,7 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.snappy(duration: 0.2), value: isAppLocked)
+        .animation(.easeInOut(duration: 0.25), value: isAppLocked)
     }
 
     // MARK: - 顶部 toast
