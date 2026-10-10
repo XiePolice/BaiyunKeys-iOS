@@ -588,7 +588,7 @@ struct HomeView: View {
                         }
                         .frame(height: 240)
                         .background(Theme.surfaceAlt, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .onChange(of: unlocker.logs.count) { _, _ in
+                        .onChange(of: unlocker.logs.count) { _ in
                             if let last = unlocker.logs.last {
                                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                             }
