@@ -2,8 +2,8 @@ import SwiftUI
 
 @main
 struct BaiyunKeysApp: App {
-    @State private var store = AppStore()
-    @State private var unlocker = UnlockService()
+    @StateObject private var store = AppStore()
+    @StateObject private var unlocker = UnlockService()
 
     init() {
         // iOS 15+ 起 UITabBar 有 standard / scrollEdge 两套 appearance，
@@ -18,8 +18,8 @@ struct BaiyunKeysApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(store)
-                .environment(unlocker)
+                .environmentObject(store)
+                .environmentObject(unlocker)
                 .tint(Theme.brand)
                 .onOpenURL(perform: handleIncomingURL)
         }
