@@ -1,9 +1,7 @@
 import Foundation
-import Observation
 
 /// 全局状态：门禁列表 + 偏好设置。
-@Observable
-final class AppStore {
+final class AppStore: ObservableObject {
 
     private enum Keys {
         static let doors = "doorState"
@@ -62,9 +60,7 @@ final class AppStore {
 
     /// 「自动获取配置」的两种通道。
     enum FetchMethod: String, CaseIterable, Identifiable {
-        /// 老接口：手机号 + 身份证号。
         case idcard
-        /// 新接口：手机号 + 微信 OpenID（免身份证，走 xcx.pinganbaiyun.cn）。
         case openid
 
         var id: String { rawValue }
@@ -78,7 +74,7 @@ final class AppStore {
 
     // MARK: - 门禁
 
-    private(set) var state = DoorState()
+    @Published private(set) var state = DoorState()
 
     var doors: [DoorConfig] { state.items }
 
@@ -86,68 +82,60 @@ final class AppStore {
 
     /// 从首页「编辑」按钮跳转到配置页时，携带要打开编辑弹窗的门禁 ID。
     /// 只在内存里存一次性的意图，不落盘；配置页读到后立刻清空。
-    var pendingEditDoorID: String?
+    @Published var pendingEditDoorID: String?
 
     // MARK: - 偏好
     //
-    // 这些属性直接读写 UserDefaults。@Observable 的宏会给存储属性生成 getter，
-    // 与 didSet 观察器冲突，所以这里手写 access / withMutation 保持可观察。
+    // iOS 16 兼容：@Observable 的 access/withMutation 宏不可用，
+    // 改成 @Published + didSet 模式。存储属性必须初始化，所以先从
+    // UserDefaults 读初值，didSet 里写回。
 
     /// 列表中掩码显示 MAC 与 Key。
-    var hideSensitive: Bool {
-        get { access(keyPath: \.hideSensitive); return bool(Keys.hideSensitive, default: true) }
-        set { withMutation(keyPath: \.hideSensitive) { defaults.set(newValue, forKey: Keys.hideSensitive) } }
+    @Published var hideSensitive: Bool {
+        didSet { defaults.set(hideSensitive, forKey: Keys.hideSensitive) }
     }
 
     /// 打开 App 后自动开锁一次。
-    var quickUnlock: Bool {
-        get { access(keyPath: \.quickUnlock); return bool(Keys.quickUnlock, default: false) }
-        set { withMutation(keyPath: \.quickUnlock) { defaults.set(newValue, forKey: Keys.quickUnlock) } }
+    @Published var quickUnlock: Bool {
+        didSet { defaults.set(quickUnlock, forKey: Keys.quickUnlock) }
     }
 
-    /// 「打开即开锁」的子开关：从后台切回前台也静默尝试一次（只用缓存设备直连，
-    /// 没有缓存就跳过）。默认关。仅当 `quickUnlock` 开启时才生效。
-    var unlockOnResume: Bool {
-        get { access(keyPath: \.unlockOnResume); return bool(Keys.unlockOnResume, default: false) }
-        set { withMutation(keyPath: \.unlockOnResume) { defaults.set(newValue, forKey: Keys.unlockOnResume) } }
+    /// 「打开即开锁」的子开关：从后台切回前台也静默尝试一次。
+    @Published var unlockOnResume: Bool {
+        didSet { defaults.set(unlockOnResume, forKey: Keys.unlockOnResume) }
     }
 
     /// 扫描或连接超时后自动重试。
-    var autoRetry: Bool {
-        get { access(keyPath: \.autoRetry); return bool(Keys.autoRetry, default: true) }
-        set { withMutation(keyPath: \.autoRetry) { defaults.set(newValue, forKey: Keys.autoRetry) } }
+    @Published var autoRetry: Bool {
+        didSet { defaults.set(autoRetry, forKey: Keys.autoRetry) }
     }
 
-    var autoRetryCount: Int {
-        get { access(keyPath: \.autoRetryCount); return clamped(Keys.autoRetryCount, default: 5, in: Self.autoRetryCountRange) }
-        set { withMutation(keyPath: \.autoRetryCount) { defaults.set(newValue, forKey: Keys.autoRetryCount) } }
+    @Published var autoRetryCount: Int {
+        didSet {
+            let clamped = min(max(autoRetryCount, Self.autoRetryCountRange.lowerBound),
+                              Self.autoRetryCountRange.upperBound)
+            if clamped != autoRetryCount { autoRetryCount = clamped; return }
+            defaults.set(autoRetryCount, forKey: Keys.autoRetryCount)
+        }
     }
 
-    var scanTimeout: Int {
-        get { access(keyPath: \.scanTimeout); return clamped(Keys.scanTimeout, default: 10, in: Self.scanTimeoutRange) }
-        set { withMutation(keyPath: \.scanTimeout) { defaults.set(newValue, forKey: Keys.scanTimeout) } }
+    @Published var scanTimeout: Int {
+        didSet {
+            let clamped = min(max(scanTimeout, Self.scanTimeoutRange.lowerBound),
+                              Self.scanTimeoutRange.upperBound)
+            if clamped != scanTimeout { scanTimeout = clamped; return }
+            defaults.set(scanTimeout, forKey: Keys.scanTimeout)
+        }
     }
 
-    /// 「自动获取配置」是否可见。默认隐藏，需在配置 tab 上连点 10 次并输入访问码才能显示；
-    /// 显示状态最长保留 24 小时，之后由 `checkAutoFetchExpiry()` 翻回隐藏。
-    /// 建议直接改用 `setAutoFetchVisible(_:)`，会一并写入时间戳。
-    var showAutoFetch: Bool {
-        get { access(keyPath: \.showAutoFetch); return bool(Keys.showAutoFetch, default: false) }
-        set { withMutation(keyPath: \.showAutoFetch) { defaults.set(newValue, forKey: Keys.showAutoFetch) } }
+    /// 「自动获取配置」是否可见。
+    @Published var showAutoFetch: Bool {
+        didSet { defaults.set(showAutoFetch, forKey: Keys.showAutoFetch) }
     }
 
     /// 显示开启时刻（Unix 秒）；隐藏时为 0。
-    var showAutoFetchAt: TimeInterval {
-        get {
-            access(keyPath: \.showAutoFetchAt)
-            let raw = defaults.double(forKey: Keys.showAutoFetchAt)
-            return raw > 0 ? raw : 0
-        }
-        set {
-            withMutation(keyPath: \.showAutoFetchAt) {
-                defaults.set(max(0, newValue), forKey: Keys.showAutoFetchAt)
-            }
-        }
+    @Published var showAutoFetchAt: TimeInterval {
+        didSet { defaults.set(max(0, showAutoFetchAt), forKey: Keys.showAutoFetchAt) }
     }
 
     /// 切换「自动获取配置」显示状态，并写入时间戳（开时=现在，关时=0）。
@@ -157,7 +145,6 @@ final class AppStore {
     }
 
     /// 若「自动获取配置」已显示且距开启时间超过 24 小时，则自动翻回隐藏。
-    /// 返回是否发生了翻转，方便调用侧决定是否刷新 UI。
     @discardableResult
     func checkAutoFetchExpiry(now: Date = Date()) -> Bool {
         guard showAutoFetch, showAutoFetchAt > 0 else { return false }
@@ -166,104 +153,79 @@ final class AppStore {
         return true
     }
 
-    /// 自动获取配置的方式：身份证号 / 微信 OpenID。默认走老的身份证通道。
-    var fetchMethod: FetchMethod {
-        get {
-            access(keyPath: \.fetchMethod)
-            let raw = defaults.string(forKey: Keys.fetchMethod) ?? FetchMethod.idcard.rawValue
-            return FetchMethod(rawValue: raw) ?? .idcard
-        }
-        set { withMutation(keyPath: \.fetchMethod) { defaults.set(newValue.rawValue, forKey: Keys.fetchMethod) } }
+    /// 自动获取配置的方式：身份证号 / 微信 OpenID。
+    @Published var fetchMethod: FetchMethod {
+        didSet { defaults.set(fetchMethod.rawValue, forKey: Keys.fetchMethod) }
     }
 
     /// 用于 OpenID 通道；本地记住，避免每次重填。空串代表未设置。
-    var openId: String {
-        get { access(keyPath: \.openId); return defaults.string(forKey: Keys.openId) ?? "" }
-        set {
-            withMutation(keyPath: \.openId) {
-                defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Keys.openId)
-            }
+    @Published var openId: String {
+        didSet {
+            let trimmed = openId.trimmingCharacters(in: .whitespaces)
+            if trimmed != openId { openId = trimmed; return }
+            defaults.set(openId, forKey: Keys.openId)
         }
     }
 
-    /// 是否把新的开锁结果写进「开锁记录」。默认开；关掉后新结果不再入库，
-    /// 已有记录保留不动，由用户自行清空 / 删除。
-    var saveHistory: Bool {
-        get { access(keyPath: \.saveHistory); return bool(Keys.saveHistory, default: true) }
-        set { withMutation(keyPath: \.saveHistory) { defaults.set(newValue, forKey: Keys.saveHistory) } }
+    /// 是否把新的开锁结果写进「开锁记录」。
+    @Published var saveHistory: Bool {
+        didSet { defaults.set(saveHistory, forKey: Keys.saveHistory) }
     }
 
-    /// 触感反馈总开关。默认开；关掉后所有按钮 / 开关 / 步进 / 菜单选择 / 开锁完成的震动都停。
-    /// `Haptics` 静态读同一个 UserDefaults key，`Components` 里的 `.sensoryFeedback` 也在触发闭包里查它。
-    var haptics: Bool {
-        get { access(keyPath: \.haptics); return bool(Keys.haptics, default: true) }
-        set { withMutation(keyPath: \.haptics) { defaults.set(newValue, forKey: Keys.haptics) } }
+    /// 触感反馈总开关。
+    @Published var haptics: Bool {
+        didSet { defaults.set(haptics, forKey: Keys.haptics) }
     }
 
-    /// 长辈模式：隐藏门禁选择器 / 编辑按钮 / 破坏性动作，拦截切到「配置」页。默认关。
-    /// 设计目的：把手机给不熟悉的人用（老人、小孩、朋友）时防止误操作或误改。
-    var elderMode: Bool {
-        get { access(keyPath: \.elderMode); return bool(Keys.elderMode, default: false) }
-        set { withMutation(keyPath: \.elderMode) { defaults.set(newValue, forKey: Keys.elderMode) } }
+    /// 长辈模式。
+    @Published var elderMode: Bool {
+        didSet { defaults.set(elderMode, forKey: Keys.elderMode) }
     }
 
-    /// App 从后台回到前台时自动开锁一次。默认关。跟 `quickUnlock`（冷启动那次）互不干扰。
-    var autoUnlockOnForeground: Bool {
-        get { access(keyPath: \.autoUnlockOnForeground); return bool(Keys.autoUnlockOnForeground, default: false) }
-        set { withMutation(keyPath: \.autoUnlockOnForeground) { defaults.set(newValue, forKey: Keys.autoUnlockOnForeground) } }
+    /// App 从后台回到前台时自动开锁一次。
+    @Published var autoUnlockOnForeground: Bool {
+        didSet { defaults.set(autoUnlockOnForeground, forKey: Keys.autoUnlockOnForeground) }
     }
 
-    /// 长辈模式下是否禁用首页顶部的门禁下拉选择器。开启长辈模式时由弹窗勾选，持久化。
-    /// "禁用"而不是"隐藏"：门禁名仍显示，只是不能点开菜单换门禁。
-    var elderLocksDoorSelector: Bool {
-        get { access(keyPath: \.elderLocksDoorSelector); return bool(Keys.elderLocksDoorSelector, default: false) }
-        set { withMutation(keyPath: \.elderLocksDoorSelector) { defaults.set(newValue, forKey: Keys.elderLocksDoorSelector) } }
+    /// 长辈模式下是否禁用首页顶部的门禁下拉选择器。
+    @Published var elderLocksDoorSelector: Bool {
+        didSet { defaults.set(elderLocksDoorSelector, forKey: Keys.elderLocksDoorSelector) }
     }
 
-    /// 长辈模式下是否连「运行日志」卡片也隐藏。开启长辈模式时由弹窗勾选，持久化。
-    var elderHidesLogs: Bool {
-        get { access(keyPath: \.elderHidesLogs); return bool(Keys.elderHidesLogs, default: false) }
-        set { withMutation(keyPath: \.elderHidesLogs) { defaults.set(newValue, forKey: Keys.elderHidesLogs) } }
+    /// 长辈模式下是否连「运行日志」卡片也隐藏。
+    @Published var elderHidesLogs: Bool {
+        didSet { defaults.set(elderHidesLogs, forKey: Keys.elderHidesLogs) }
     }
 
-    /// 长辈模式下是否连「开锁记录」卡片也隐藏。开启长辈模式时由弹窗勾选，持久化。
-    var elderHidesHistory: Bool {
-        get { access(keyPath: \.elderHidesHistory); return bool(Keys.elderHidesHistory, default: false) }
-        set { withMutation(keyPath: \.elderHidesHistory) { defaults.set(newValue, forKey: Keys.elderHidesHistory) } }
+    /// 长辈模式下是否连「开锁记录」卡片也隐藏。
+    @Published var elderHidesHistory: Bool {
+        didSet { defaults.set(elderHidesHistory, forKey: Keys.elderHidesHistory) }
     }
 
-    /// 首页「运行日志」卡片是否展开。默认展开；持久化，重开 App 保持上次状态。
-    var showLogsExpanded: Bool {
-        get { access(keyPath: \.showLogsExpanded); return bool(Keys.showLogsExpanded, default: true) }
-        set { withMutation(keyPath: \.showLogsExpanded) { defaults.set(newValue, forKey: Keys.showLogsExpanded) } }
+    /// 首页「运行日志」卡片是否展开。
+    @Published var showLogsExpanded: Bool {
+        didSet { defaults.set(showLogsExpanded, forKey: Keys.showLogsExpanded) }
     }
 
-    /// 首页「开锁记录」卡片是否展开。默认展开；持久化，重开 App 保持上次状态。
-    var showHistoryExpanded: Bool {
-        get { access(keyPath: \.showHistoryExpanded); return bool(Keys.showHistoryExpanded, default: true) }
-        set { withMutation(keyPath: \.showHistoryExpanded) { defaults.set(newValue, forKey: Keys.showHistoryExpanded) } }
+    /// 首页「开锁记录」卡片是否展开。
+    @Published var showHistoryExpanded: Bool {
+        didSet { defaults.set(showHistoryExpanded, forKey: Keys.showHistoryExpanded) }
     }
 
-    /// 启动 App 时是否需要 Face ID / Touch ID 验证。默认关。
-    var requireBiometric: Bool {
-        get { access(keyPath: \.requireBiometric); return bool(Keys.requireBiometric, default: false) }
-        set { withMutation(keyPath: \.requireBiometric) { defaults.set(newValue, forKey: Keys.requireBiometric) } }
+    /// 启动 App 时是否需要 Face ID / Touch ID 验证。
+    @Published var requireBiometric: Bool {
+        didSet { defaults.set(requireBiometric, forKey: Keys.requireBiometric) }
     }
 
     /// 外观偏好；默认跟随系统。
-    var theme: Theme {
-        get {
-            access(keyPath: \.theme)
-            let raw = defaults.string(forKey: Keys.theme) ?? Theme.auto.rawValue
-            return Theme(rawValue: raw) ?? .auto
-        }
-        set { withMutation(keyPath: \.theme) { defaults.set(newValue.rawValue, forKey: Keys.theme) } }
+    @Published var theme: Theme {
+        didSet { defaults.set(theme.rawValue, forKey: Keys.theme) }
     }
 
     /// 开锁历史，最新在前。启动时从 UserDefaults 读一次。
-    private(set) var history: [UnlockRecord] = []
+    @Published private(set) var history: [UnlockRecord] = []
 
-    /// 记一条开锁结果。若「保存开锁记录」关掉则直接跳过，已有记录保留不动。
+    /// 记一条开锁结果。
     func addUnlock(doorId: String, doorName: String, ok: Bool, message: String) {
         guard saveHistory else { return }
         let entry = UnlockRecord(at: Date(), doorId: doorId, doorName: doorName, ok: ok, message: message)
@@ -280,7 +242,7 @@ final class AppStore {
         persistHistory()
     }
 
-    /// 删单条开锁记录。找不到就静默返回。
+    /// 删单条开锁记录。
     func deleteUnlock(id: String) {
         guard let index = history.firstIndex(where: { $0.id == id }) else { return }
         history.remove(at: index)
@@ -303,11 +265,40 @@ final class AppStore {
     static let autoRetryCountRange = 1...20
     static let scanTimeoutRange = 3...60
 
-    @ObservationIgnored private let defaults = UserDefaults.standard
+    private let defaults = UserDefaults.standard
 
     init() {
-        state = Self.loadState()
-        history = Self.loadHistory()
+        // 先给所有 @Published 属性读初值，再加载门禁和历史。
+        let d = UserDefaults.standard
+
+        self.hideSensitive = d.object(forKey: Keys.hideSensitive) as? Bool ?? true
+        self.quickUnlock = d.object(forKey: Keys.quickUnlock) as? Bool ?? false
+        self.unlockOnResume = d.object(forKey: Keys.unlockOnResume) as? Bool ?? false
+        self.autoRetry = d.object(forKey: Keys.autoRetry) as? Bool ?? true
+        self.autoRetryCount = min(max(d.object(forKey: Keys.autoRetryCount) as? Int ?? 5,
+                                      Self.autoRetryCountRange.lowerBound),
+                                  Self.autoRetryCountRange.upperBound)
+        self.scanTimeout = min(max(d.object(forKey: Keys.scanTimeout) as? Int ?? 10,
+                                   Self.scanTimeoutRange.lowerBound),
+                               Self.scanTimeoutRange.upperBound)
+        self.showAutoFetch = d.object(forKey: Keys.showAutoFetch) as? Bool ?? false
+        self.showAutoFetchAt = d.double(forKey: Keys.showAutoFetchAt)
+        self.fetchMethod = FetchMethod(rawValue: d.string(forKey: Keys.fetchMethod) ?? "") ?? .idcard
+        self.openId = d.string(forKey: Keys.openId) ?? ""
+        self.saveHistory = d.object(forKey: Keys.saveHistory) as? Bool ?? true
+        self.haptics = d.object(forKey: Keys.haptics) as? Bool ?? true
+        self.elderMode = d.object(forKey: Keys.elderMode) as? Bool ?? false
+        self.autoUnlockOnForeground = d.object(forKey: Keys.autoUnlockOnForeground) as? Bool ?? false
+        self.elderLocksDoorSelector = d.object(forKey: Keys.elderLocksDoorSelector) as? Bool ?? false
+        self.elderHidesLogs = d.object(forKey: Keys.elderHidesLogs) as? Bool ?? false
+        self.elderHidesHistory = d.object(forKey: Keys.elderHidesHistory) as? Bool ?? false
+        self.showLogsExpanded = d.object(forKey: Keys.showLogsExpanded) as? Bool ?? true
+        self.showHistoryExpanded = d.object(forKey: Keys.showHistoryExpanded) as? Bool ?? true
+        self.requireBiometric = d.object(forKey: Keys.requireBiometric) as? Bool ?? false
+        self.theme = Theme(rawValue: d.string(forKey: Keys.theme) ?? "") ?? .auto
+
+        self.state = Self.loadState()
+        self.history = Self.loadHistory()
     }
 
     private func bool(_ key: String, default fallback: Bool) -> Bool {
@@ -330,7 +321,6 @@ final class AppStore {
         normalized.name = config.name.trimmingCharacters(in: .whitespaces)
 
         if let index = state.items.firstIndex(where: { $0.id == normalized.id }) {
-            // 保留已缓存的外设 UUID，除非关键参数变了
             if state.items[index].mac == normalized.mac, state.items[index].bluetoothName == normalized.bluetoothName {
                 normalized.cachedPeripheralID = state.items[index].cachedPeripheralID
             }
@@ -378,7 +368,6 @@ final class AppStore {
             item.key = Hex.sanitizeKey(item.key)
             guard Hex.isValidMac(item.mac), Hex.isValidKey(item.key) else { continue }
             if let index = state.items.firstIndex(where: { $0.mac == item.mac && $0.key == item.key }) {
-                // 已存在：只补齐缺失的蓝牙名 / 名称
                 if state.items[index].bluetoothName.isEmpty { state.items[index].bluetoothName = item.bluetoothName }
                 if state.items[index].name.isEmpty { state.items[index].name = item.name }
             } else {
