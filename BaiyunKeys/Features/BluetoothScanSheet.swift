@@ -44,7 +44,7 @@ struct BluetoothScanSheet: View {
             .navigationTitle("蓝牙扫描")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
                 }
             }
