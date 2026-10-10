@@ -19,30 +19,21 @@
 
 本项目遵循 [MIT License](LICENSE.txt)。
 
-蓝牙门禁离线开锁，SwiftUI，无第三方依赖。
+## 安装
 
-配套网页版：<https://baiyunkeys-web.pages.dev/>，安卓 / iOS / 电脑浏览器都能用，一套格式互通，导入导出直接搬。
+**系统要求：iOS 16 及以上。** 原作者版本要求iOS 17以上，我用Ai修改了部分原代码，已兼容巨魔iOS16 iphone 14 pro max，其他版本未测试，APP如有问题建议咨询原作者[@YiwanGo](https://github.com/YiwanGo)，本人从未学过代码也不会写代码。
+
+不会自签的建议使用网页版：<https://baiyunkeys-web.pages.dev/>，安卓 / iOS / 电脑浏览器都能用，一套格式互通，导入导出直接搬。
 
 > 安卓用户请使用 Edge 或 Chrome 浏览器打开，系统自带浏览器可能存在 Web Bluetooth 兼容问题。
 
-## 安装
-
-**系统要求：iOS 16 及以上。** 原作者版本要求iOS 17以上，我用Ai修改了部分原代码，已兼容巨魔iOS16 iphone 14 pro max，其他版本未测试，如有问题建议咨询原作者，本人从未学过代码也不会写代码。
-
-下载最新版：[Releases · 最新](https://github.com/YiwanGo/BaiyunKeys-iOS/releases/latest)。
+下载最新版：[Releases · 最新](https://github.com/XiePolice/BaiyunKeys-iOS16/releases)。
 
 产物是**免签名** IPA，需要自签后安装。常见方式：
 
 - **TrollStore**：直接装，长期有效。
 - **AltStore / SideStore**：Apple ID 签名，7 天有效期，到期用电脑或 AltStore 重签。
 - **Sideloadly / Esign**：p12 证书签名，按证书有效期使用。
-- **Xcode**：连上真机直接 Run（走 `跑起来` 那节）。
-
-## 跑起来
-
-Xcode 16、iOS 17+、真机（模拟器没蓝牙）。
-
-打开 `BaiyunKeys.xcodeproj`，改 target 的 Bundle ID 和签名 Team，⌘R。首次开锁会弹一次系统蓝牙授权。免费开发者账号签的 App 7 天有效期，到期重跑一次即可。
 
 ## 用法
 
