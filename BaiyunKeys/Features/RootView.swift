@@ -111,12 +111,12 @@ struct RootView: View {
         }
         .animation(.snappy, value: rootToast)
         .onAppear(perform: handleLaunch)
-        .onChange(of: store.elderMode) { _, on in
+        .onChange(of: store.elderMode) { on in
             // 开启长辈模式后配置 tab 已被移除；若此刻仍停在 config
             // （例如通过 URL scheme 打开），把 tab 拉回 home 保持一致。
             if on, tab == .config { tab = .home }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             switch phase {
             case .background:
                 wasBackgrounded = true
