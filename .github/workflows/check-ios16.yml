@@ -1,0 +1,24 @@
+name: iOS 16 兼容性编译检查
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 指定Xcode版本
+        run: sudo xcode-select -s /Applications/Xcode_15.0.app
+
+      - name: 编译iOS 16模拟器版本
+        run: |
+          xcodebuild build \
+            -project "BaiyunKeys.xcodeproj" \
+            -scheme "BaiyunKeys" \
+            -destination "platform=iOS Simulator,name=iPhone 15,OS=16.4" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
