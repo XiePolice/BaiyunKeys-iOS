@@ -83,7 +83,7 @@ struct HomeView: View {
                 }
 
                 // 右上角：长辈模式、快速模式、掩码
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // 长辈模式开关：开启和关闭都需长按 3 秒（防误触）。用
                     // highPriorityGesture 让长按拿到优先级，成功后 Button 的 tap 不再触发。
                     Button {
