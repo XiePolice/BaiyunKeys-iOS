@@ -61,7 +61,7 @@ struct ConfigView: View {
                     }
             }
         }
-        .animation(.snappy, value: toast)
+        .animation(.easeInOut(duration: 0.25), value: toast)
         .alert("清空全部门禁？", isPresented: $confirmingClearAll) {
             Button("取消", role: .cancel) {}
             Button("清空", role: .destructive) { clearAllDoors() }
