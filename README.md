@@ -34,6 +34,10 @@
 - **TrollStore**：直接装，长期有效。
 - **AltStore / SideStore**：Apple ID 签名，7 天有效期，到期用电脑或 AltStore 重签。
 - **Sideloadly / Esign**：p12 证书签名，按证书有效期使用。
+  
+  <img width="720" height="1560" alt="微信图片_20261011003037_15_4" src="https://github.com/user-attachments/assets/ffb7281b-40bf-48cd-8ca0-8cecec509cce" />
+  <img width="720" height="1560" alt="微信图片_20261011003040_16_4" src="https://github.com/user-attachments/assets/0effdc12-2461-4c48-88df-98b30d4cf92f" />
+
 
 ## 用法
 
