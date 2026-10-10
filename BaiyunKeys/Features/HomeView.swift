@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: AppStore
-@EnvironmentObject private var unlocker: UnlockService
+    @EnvironmentObject private var unlocker: UnlockService
     @Environment(\.openURL) private var openURL
 
     @Binding var selectedTab: RootView.Tab
@@ -83,30 +83,31 @@ struct HomeView: View {
                 }
 
                 // 右上角：长辈模式、快速模式、掩码
+                // 统一颜色：关闭时主题色为灰，开启时为品牌色。图标使用 foregroundStyle，避免变成纯白。
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // 长辈模式开关：开启和关闭都需长按 3 秒（防误触）。用
-                    // highPriorityGesture 让长按拿到优先级，成功后 Button 的 tap 不再触发。
+                    // 长辈模式开关：开启和关闭都需长按 3 秒（防误触）
                     Image(systemName: store.elderMode ? "hand.raised.fill" : "hand.raised")
-    .tint(store.elderMode ? Theme.brand : Theme.textSecondary)
-    .onTapGesture {
-        flashHomeToast("长按 3 秒切换长辈模式")
-    }
-    .onLongPressGesture(minimumDuration: 3) {
-        handleElderLongPress()
-        Haptics.tap(.light)
-    }
+                        .foregroundStyle(store.elderMode ? Theme.brand : Theme.textSecondary)
+                        .onTapGesture {
+                            flashHomeToast("长按 3 秒切换长辈模式")
+                        }
+                        .onLongPressGesture(minimumDuration: 3) {
+                            handleElderLongPress()
+                            Haptics.tap(.light)
+                        }
 
                     // 快速模式：开启和关闭都需长按 3 秒；开启前弹确认框说明行为。
-                   Image(systemName: store.autoUnlockOnForeground ? "bolt.fill" : "bolt")
-    .tint(store.autoUnlockOnForeground ? Theme.brand : Theme.textSecondary)
-    .onTapGesture {
-        flashHomeToast("长按 3 秒切换快速模式")
-    }
-    .onLongPressGesture(minimumDuration: 3) {
-        handleQuickModeLongPress()
-        Haptics.tap(.light)
-    }
+                    Image(systemName: store.autoUnlockOnForeground ? "bolt.fill" : "bolt")
+                        .foregroundStyle(store.autoUnlockOnForeground ? Theme.brand : Theme.textSecondary)
+                        .onTapGesture {
+                            flashHomeToast("长按 3 秒切换快速模式")
+                        }
+                        .onLongPressGesture(minimumDuration: 3) {
+                            handleQuickModeLongPress()
+                            Haptics.tap(.light)
+                        }
 
+                    // 掩码按钮
                     Button {
                         store.hideSensitive.toggle()
                         Haptics.tap(.light)
@@ -555,7 +556,7 @@ struct HomeView: View {
     private var logCard: some View {
         Card {
             Button {
-                withAnimation(.snappy(duration: 0.25)) { store.showLogsExpanded.toggle() }
+                withAnimation(.easeInOut(duration: 0.25)) { store.showLogsExpanded.toggle() }
             } label: {
                 HStack {
                     CardHeader(title: "运行日志", subtitle: "开锁过程的逐步记录", symbol: "text.alignleft", tint: Theme.info)
@@ -648,7 +649,7 @@ struct HomeView: View {
         if !store.history.isEmpty {
             Card {
                 Button {
-                    withAnimation(.snappy(duration: 0.25)) { store.showHistoryExpanded.toggle() }
+                    withAnimation(.easeInOut(duration: 0.25)) { store.showHistoryExpanded.toggle() }
                 } label: {
                     HStack {
                         CardHeader(title: "开锁记录",
