@@ -6,7 +6,7 @@
 
 原版 App 要求 iOS 17 以上才能使用。本项目在原版基础上进行了兼容性适配：
 
-- **降低最低系统要求**：将支持版本从 iOS 17 降至 **iOS 16**。
+- **降低最低系统要求**：将支持版本从 iOS 17 降至 **iOS 16**。方便巨魔及越狱用户安装，iOS15以下未做测试不知道是否兼容。
 - **替换 iOS 17 独有 API**：将 `@Observable`、`@ObservationIgnored` 等替换为 `ObservableObject` + `@Published`；将 `.sensoryFeedback`、`.snappy` 动画等替换为 iOS 16 兼容写法。
 - **修复了首页顶部工具栏的交互 Bug**：解决了在 iOS 16 上长按手势与单击事件冲突导致图标变色、无提示的问题。
 
@@ -17,7 +17,7 @@
 
 ## 开源协议
 
-本项目遵循 [MIT License](LICENSE.txt)。
+本项目遵循 [MIT License](https://github.com/XiePolice/BaiyunKeys-iOS16/blob/main/LICENSE)。
 
 ## 安装
 
@@ -67,7 +67,7 @@ App 注册了 `baiyunkeys://` scheme，两个格式：
 
 ## 已知限制
 
-- 排版基于 iPhone 16 Pro Max（6.9″）开发适配，其他机型如果遇到布局问题欢迎[提 Issue](https://github.com/YiwanGo/BaiyunKeys-iOS/issues)。
+- 排版基于 iPhone 16 Pro Max（6.9″）开发适配。
 - 前台开锁最稳；后台入口受 iOS 后台运行时长限制，链路慢时可能中途失败。
 - 操作按钮 / 轻点背面等硬件入口只有 iPhone 15 Pro 及以后机型有；快捷指令和 Siri 全机型可用。
 - CoreBluetooth 不向 App 暴露外设 MAC，扫描只能靠蓝牙名。
