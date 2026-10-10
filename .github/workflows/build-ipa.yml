@@ -1,120 +1,51 @@
-name: Build IPA
+name: Build iOS
 
 on:
-  push:
-    branches: [main, master]
-    tags: ["v*"]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
-
-env:
-  # .xcodeproj 所在目录。若把工程放在仓库子目录里，改成子目录名即可（例如 BaiyunKeys-iOS）
-  PROJECT_DIR: .
-  PROJECT_NAME: BaiyunKeys
-  SCHEME: BaiyunKeys
-  CONFIGURATION: Release
 
 jobs:
   build:
-    # objectVersion 77 的工程需要 Xcode 16，macos-14 默认还是 Xcode 15，必须用 macos-15
     runs-on: macos-15
-    timeout-minutes: 30
-
-    # 打 tag 时需要写权限才能创建 Release
-    permissions:
-      contents: write
-
+    timeout-minutes: 60
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: 选择 Xcode 16
-        run: |
-          set -euo pipefail
-          # 取本机最高版本的 Xcode 16.x
-          XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1 || true)
-          if [ -n "$XCODE_PATH" ]; then
-            sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
-          fi
-          xcodebuild -version
+      - name: List Xcode versions
+        run: ls /Applications | grep Xcode
 
-      - name: 读取版本号
-        id: meta
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: |
-          set -euo pipefail
-          VERSION=$(grep -m1 'MARKETING_VERSION' "$PROJECT_NAME.xcodeproj/project.pbxproj" \
-                    | sed -E 's/.*= *([^;]+);.*/\1/' | tr -d ' "')
-          [ -n "$VERSION" ] || VERSION=0.0.0
-          echo "version=$VERSION"                  >> "$GITHUB_OUTPUT"
-          echo "short_sha=${GITHUB_SHA::7}"        >> "$GITHUB_OUTPUT"
-          echo "artifact=$PROJECT_NAME-$VERSION-${GITHUB_SHA::7}-unsigned" >> "$GITHUB_OUTPUT"
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
 
-      - name: 编译（关闭代码签名）
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: Build
         run: |
-          set -euo pipefail
-          xcodebuild \
-            -project "$PROJECT_NAME.xcodeproj" \
-            -scheme "$SCHEME" \
-            -configuration "$CONFIGURATION" \
+          set -o pipefail
+          xcodebuild build \
+            -project BaiyunKeys.xcodeproj \
+            -scheme BaiyunKeys \
             -sdk iphoneos \
+            -configuration Release \
             -derivedDataPath build \
-            -destination 'generic/platform=iOS' \
-            ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_ENTITLEMENTS="" \
-            DEVELOPMENT_TEAM="" \
-            build
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            IPHONEOS_DEPLOYMENT_TARGET=16.0 \
+            2>&1 | tee build.log
 
-      - name: 打包 IPA
-        id: package
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: Package IPA
         run: |
-          set -euo pipefail
-          APP_PATH=$(find build/Build/Products -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "::error::未在 build/Build/Products 下找到 .app 产物"
-            find build/Build/Products -maxdepth 3 || true
-            exit 1
-          fi
-          echo "找到产物：$APP_PATH"
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/BaiyunKeys.app Payload/
+          zip -r BaiyunKeys.ipa Payload
 
-          # ipa 就是一个 zip，约定结构为 Payload/<App>.app
-          rm -rf Payload
-          mkdir -p Payload
-          cp -R "$APP_PATH" Payload/
-          # 免签名产物里可能残留空的签名目录，清掉避免安装工具报错
-          rm -rf Payload/*.app/_CodeSignature
-          zip -qry "${{ steps.meta.outputs.artifact }}.ipa" Payload
-
-          ls -lh "${{ steps.meta.outputs.artifact }}.ipa"
-          echo "ipa_path=${{ env.PROJECT_DIR }}/${{ steps.meta.outputs.artifact }}.ipa" >> "$GITHUB_OUTPUT"
-
-      - name: 上传构建产物
-        uses: actions/upload-artifact@v7
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.artifact }}
-          path: ${{ steps.package.outputs.ipa_path }}
-          if-no-files-found: error
-          retention-days: 30
+          name: BaiyunKeys-ipa
+          path: BaiyunKeys.ipa
 
-      - name: 发布 Release（仅打 tag 时）
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          files: ${{ steps.package.outputs.ipa_path }}
-          generate_release_notes: true
-          body: |
-            **免签名 IPA**，需要自行签名后安装：
-
-            - AltStore / SideStore：直接导入 ipa，用你的 Apple ID 签名（7 天有效期）
-            - TrollStore：可直接安装，长期有效
-            - 自签：`Sideloadly`、`Esign` 或 `codesign` 命令行
-
-            构建版本 `${{ steps.meta.outputs.version }}` · 提交 `${{ steps.meta.outputs.short_sha }}`
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: build-log
+          path: build.log
