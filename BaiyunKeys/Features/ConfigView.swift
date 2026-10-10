@@ -589,7 +589,7 @@ struct ImportSheet: View {
             .navigationTitle("导入门禁")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("取消") { dismiss() }
                 }
             }
