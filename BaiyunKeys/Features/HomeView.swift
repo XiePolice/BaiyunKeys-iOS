@@ -128,7 +128,7 @@ struct HomeView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.snappy, value: homeToast)
+        .animation(.easeInOut(duration: 0.25), value: homeToast)
         .sheet(isPresented: $showElderSetup) {
             elderSetupSheet
                 .presentationDetents([.medium])
@@ -388,7 +388,7 @@ struct HomeView: View {
         homeToastDismissTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.8))
             guard !Task.isCancelled else { return }
-            withAnimation(.snappy) { homeToast = nil }
+            withAnimation(.easeInOut(duration: 0.25)) { homeToast = nil }
             homeToastDismissTask = nil
         }
     }
