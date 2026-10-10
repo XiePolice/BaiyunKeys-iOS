@@ -26,7 +26,7 @@ struct DoorEditorView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 18) {
                     Card {
                         CardHeader(title: "蓝牙门禁参数", subtitle: "对应官方数据表中的字段", symbol: "key.fill")
