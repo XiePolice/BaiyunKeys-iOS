@@ -4,7 +4,8 @@ import Foundation
 enum UpdateChecker {
 
     /// 仓库路径。发布 Releases 时打 tag（如 `v1.7.0`），本 API 就会返回它。
-    static let repository = "YiwanGo/BaiyunKeys-iOS"
+    /// 【修改说明】：这里已改为你自己的仓库地址。
+    static let repository = "XiePolice/BaiyunKeys-iOS"
 
     struct Release {
         /// 例如 `v1.7.0` 或 `1.7.0`。
