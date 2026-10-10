@@ -35,7 +35,7 @@ struct DoorEditorView: View {
                                   autocapitalization: .sentences)
                         FlatField(title: "门禁 MAC", hint: "macNum", placeholder: "AA:BB:CC:DD:EE:FF",
                                   text: $mac, autocapitalization: .characters, monospaced: true)
-                            .onChange(of: mac) { _, newValue in
+                            .onChange(of: mac) { newValue in
                                 // 用户手动改过 MAC 后就不再自动覆盖
                                 if let filled = autoFilledMac, newValue != filled {
                                     autoFilledMac = nil
@@ -52,7 +52,7 @@ struct DoorEditorView: View {
 
                         FlatField(title: "蓝牙名称", hint: "bluetoothName · iOS 必填", placeholder: "如 BLE12345678",
                                   text: $bluetoothName, autocapitalization: .characters, monospaced: true)
-                            .onChange(of: bluetoothName) { _, newValue in
+                            .onChange(of: bluetoothName) { newValue in
                                 autoFillMacIfNeeded(from: newValue)
                             }
                     }
