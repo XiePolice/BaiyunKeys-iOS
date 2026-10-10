@@ -58,7 +58,6 @@ struct UnlockButton: View {
                 VStack(spacing: 10) {
                     Image(systemName: symbol)
                         .font(.system(size: 54, weight: .semibold))
-                        .contentTransition(.symbolEffect(.replace))
                     Text(caption)
                         .font(.system(size: 15, weight: .semibold))
                         .tracking(1)
@@ -78,7 +77,7 @@ struct UnlockButton: View {
             )
         }
         .frame(height: 260)
-        .onChange(of: phase) { _, newValue in
+        .onChange(of: phase) { newValue in
             ripple = newValue.isBusy
         }
         .onAppear { ripple = phase.isBusy }
