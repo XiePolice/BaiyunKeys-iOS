@@ -1,4 +1,23 @@
-# 白云钥匙 · iOS 原生版
+# 白云钥匙 (BaiyunKeys) - iOS 16 兼容版
+
+本项目是基于 [@YiwanGo](https://github.com/YiwanGo) 的开源项目 [BaiyunKeys-iOS](https://github.com/YiwanGo/BaiyunKeys-iOS) 修改的衍生版本。
+
+## 修改说明
+
+原版 App 要求 iOS 17 以上才能使用。本项目在原版基础上进行了兼容性适配：
+
+- **降低最低系统要求**：将支持版本从 iOS 17 降至 **iOS 16**。
+- **替换 iOS 17 独有 API**：将 `@Observable`、`@ObservationIgnored` 等替换为 `ObservableObject` + `@Published`；将 `.sensoryFeedback`、`.snappy` 动画等替换为 iOS 16 兼容写法。
+- **修复了首页顶部工具栏的交互 Bug**：解决了在 iOS 16 上长按手势与单击事件冲突导致图标变色、无提示的问题。
+
+## 致谢
+
+- 感谢原作者 [@YiwanGo](https://github.com/YiwanGo) 开发并开源了如此实用的工具。
+- 原项目地址：[https://github.com/YiwanGo/BaiyunKeys-iOS](https://github.com/YiwanGo/BaiyunKeys-iOS)
+
+## 开源协议
+
+本项目遵循 [MIT License](LICENSE.txt)。
 
 蓝牙门禁离线开锁，SwiftUI，无第三方依赖。
 
@@ -8,7 +27,7 @@
 
 ## 安装
 
-**系统要求：iOS 17 及以上。** 低于此版本会启动闪退（工程用了大量 iOS 17 才有的 API，系统找不到符号）。iPhone 8 及以后机型都能升到 iOS 17 / 18。
+**系统要求：iOS 16 及以上。** 原作者版本要求iOS 17以上，我用Ai修改了部分原代码，已兼容巨魔iOS16 iphone 14 pro max，其他版本未测试，如有问题建议咨询原作者，本人从未学过代码也不会写代码。
 
 下载最新版：[Releases · 最新](https://github.com/YiwanGo/BaiyunKeys-iOS/releases/latest)。
 
