@@ -4,8 +4,8 @@ private let webVersionURL = URL(string: "https://baiyunkeys-web.pages.dev/")!
 private let projectRepoURL = URL(string: "https://github.com/YiwanGo/BaiyunKeys-iOS")!
 
 struct ConfigView: View {
-    @Environment(AppStore.self) private var store
-    @Environment(UnlockService.self) private var unlocker
+    @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var unlocker: UnlockService
     @Environment(\.openURL) private var openURL
 
     @State private var editing: DoorConfig?
