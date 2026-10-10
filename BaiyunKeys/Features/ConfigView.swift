@@ -69,7 +69,7 @@ struct ConfigView: View {
             Text("将删除全部 \(store.doors.count) 套门禁参数，此操作不可撤销。")
         }
         .onAppear(perform: consumePendingEdit)
-        .onChange(of: store.pendingEditDoorID) { _, _ in consumePendingEdit() }
+        .onChange(of: store.pendingEditDoorID) { _ in consumePendingEdit() }
         .sheet(isPresented: $showImportSheet) {
             ImportSheet { text in
                 let parsed = DoorTextParser.parse(text)
@@ -175,7 +175,6 @@ struct ConfigView: View {
     // MARK: - 自动获取
 
     private var autoFetchCard: some View {
-        @Bindable var store = store
 
         return Card {
             CardHeader(title: "自动获取配置", subtitle: "从官方拉取已授权门禁", symbol: "antenna.radiowaves.left.and.right", tint: Theme.info)
@@ -315,7 +314,7 @@ struct ConfigView: View {
     // MARK: - 偏好
 
     private var preferenceCard: some View {
-        @Bindable var store = store
+        
 
         return Card {
             CardHeader(title: "偏好设置", subtitle: "开锁行为与显示", symbol: "gearshape.fill", tint: Theme.textSecondary)
