@@ -86,30 +86,26 @@ struct HomeView: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // 长辈模式开关：开启和关闭都需长按 3 秒（防误触）。用
                     // highPriorityGesture 让长按拿到优先级，成功后 Button 的 tap 不再触发。
-                    Button {
-                        flashHomeToast("长按 3 秒切换长辈模式")
-                    } label: {
-                        Image(systemName: store.elderMode ? "hand.raised.fill" : "hand.raised")
-                    }
-                    .tint(store.elderMode ? Theme.brand : Theme.textSecondary)
-                    .highPriorityGesture(
-                        LongPressGesture(minimumDuration: 3).onEnded { _ in
-                            handleElderLongPress()
-                        }
-                    )
+                    Image(systemName: store.elderMode ? "hand.raised.fill" : "hand.raised")
+    .tint(store.elderMode ? Theme.brand : Theme.textSecondary)
+    .onTapGesture {
+        flashHomeToast("长按 3 秒切换长辈模式")
+    }
+    .onLongPressGesture(minimumDuration: 3) {
+        handleElderLongPress()
+        Haptics.tap(.light)
+    }
 
                     // 快速模式：开启和关闭都需长按 3 秒；开启前弹确认框说明行为。
-                    Button {
-                        flashHomeToast("长按 3 秒切换快速模式")
-                    } label: {
-                        Image(systemName: store.autoUnlockOnForeground ? "bolt.fill" : "bolt")
-                    }
-                    .tint(store.autoUnlockOnForeground ? Theme.brand : Theme.textSecondary)
-                    .highPriorityGesture(
-                        LongPressGesture(minimumDuration: 3).onEnded { _ in
-                            handleQuickModeLongPress()
-                        }
-                    )
+                   Image(systemName: store.autoUnlockOnForeground ? "bolt.fill" : "bolt")
+    .tint(store.autoUnlockOnForeground ? Theme.brand : Theme.textSecondary)
+    .onTapGesture {
+        flashHomeToast("长按 3 秒切换快速模式")
+    }
+    .onLongPressGesture(minimumDuration: 3) {
+        handleQuickModeLongPress()
+        Haptics.tap(.light)
+    }
 
                     Button {
                         store.hideSensitive.toggle()
